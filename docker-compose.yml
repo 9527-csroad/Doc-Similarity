@@ -1,0 +1,184 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        REQUIREMENTS_FILE: ${REQUIREMENTS_FILE:-requirements/base.txt}
+    profiles: ["demo", "prod"]
+    environment:
+      DEPLOY_MODE: ${DEPLOY_MODE:-demo}
+      DEBUG: ${DEBUG:-false}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-docsim}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-docsim123}
+      POSTGRES_DB: ${POSTGRES_DB:-docsim}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MILVUS_HOST: milvus
+      MILVUS_PORT: 19530
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-documents}
+      VECTOR_STORE: ${VECTOR_STORE:-}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-}
+      OCR_PROVIDER: ${OCR_PROVIDER:-rapid}
+      TASK_MODE: ${TASK_MODE:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+      - ./data:/app/data
+    depends_on:
+      - postgres
+      - redis
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        REQUIREMENTS_FILE: requirements/production.txt
+    command: celery -A app.tasks.celery_app:celery_app worker -l info
+    profiles: ["prod"]
+    environment:
+      DEPLOY_MODE: production
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-docsim}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-docsim123}
+      POSTGRES_DB: ${POSTGRES_DB:-docsim}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MILVUS_HOST: milvus
+      MILVUS_PORT: 19530
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-documents}
+      OCR_PROVIDER: ${OCR_PROVIDER:-rapid}
+      TASK_MODE: celery
+      VECTOR_STORE: milvus
+      STORAGE_BACKEND: minio
+    volumes:
+      - ./:/app
+      - ./data:/app/data
+    depends_on:
+      - postgres
+      - redis
+      - milvus
+      - minio
+
+  postgres:
+    image: postgres:15-alpine
+    profiles: ["demo", "prod"]
+    container_name: doc-sim-postgres
+    environment:
+      POSTGRES_USER: docsim
+      POSTGRES_PASSWORD: docsim123
+      POSTGRES_DB: docsim
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docsim"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["demo", "prod"]
+    container_name: doc-sim-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    profiles: ["prod"]
+    container_name: doc-sim-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    profiles: ["prod"]
+    container_name: doc-sim-etcd
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    volumes:
+      - etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+
+  minio-milvus:
+    image: minio/minio:latest
+    profiles: ["prod"]
+    container_name: doc-sim-minio-milvus
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - milvus_minio_data:/minio_data
+    command: minio server /minio_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  milvus:
+    image: milvusdb/milvus:v2.3.3
+    profiles: ["prod"]
+    container_name: doc-sim-milvus
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio-milvus:9000
+    volumes:
+      - milvus_data:/var/lib/milvus
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - etcd
+      - minio-milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  etcd_data:
+  milvus_minio_data:
+  milvus_data:

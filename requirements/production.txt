@@ -1,0 +1,8 @@
+-r base.txt
+pymilvus==2.3.4
+minio==7.2.3
+celery==5.3.6
+alembic==1.13.1
+paddlepaddle==2.6.0
+paddleocr==2.7.0.3
+openai==1.10.0

@@ -1,0 +1,89 @@
+from pydantic_settings import BaseSettings
+from typing import Literal, Optional
+from functools import lru_cache
+
+
+class Settings(BaseSettings):
+    # App
+    APP_NAME: str = "Document Similarity System"
+    DEBUG: bool = False
+    DEPLOY_MODE: Literal["demo", "production"] = "demo"
+
+    # Database
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = "docsim"
+    POSTGRES_PASSWORD: str = "docsim123"
+    POSTGRES_DB: str = "docsim"
+
+    # Redis
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+
+    # Milvus
+    MILVUS_HOST: str = "localhost"
+    MILVUS_PORT: int = 19530
+
+    # MinIO
+    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin123"
+    MINIO_BUCKET: str = "documents"
+    LOCAL_STORAGE_PATH: str = "./data/files"
+    FAISS_INDEX_PATH: str = "./data/faiss/index.bin"
+    FAISS_META_PATH: str = "./data/faiss/meta.json"
+
+    # Embedding
+    EMBEDDING_PROVIDER: Literal["bge", "openai", "zhipu"] = "bge"
+    EMBEDDING_MODEL: str = "BAAI/bge-m3"
+    EMBEDDING_DIM: int = 1024
+    OPENAI_API_KEY: str = ""
+    ZHIPU_API_KEY: str = ""
+
+    # Search
+    DEFAULT_THRESHOLD: float = 0.8
+    DEFAULT_TOP_K: int = 10
+    OCR_PROVIDER: Optional[Literal["rapid", "paddle", "none"]] = None
+    VECTOR_STORE: Optional[Literal["faiss", "milvus"]] = None
+    STORAGE_BACKEND: Optional[Literal["local", "minio"]] = None
+    TASK_MODE: Optional[Literal["sync", "celery"]] = None
+
+    @property
+    def ocr_provider(self) -> Literal["rapid", "paddle", "none"]:
+        if self.OCR_PROVIDER:
+            return self.OCR_PROVIDER
+        return "rapid"
+
+    @property
+    def vector_store(self) -> Literal["faiss", "milvus"]:
+        if self.VECTOR_STORE:
+            return self.VECTOR_STORE
+        return "milvus" if self.DEPLOY_MODE == "production" else "faiss"
+
+    @property
+    def storage_backend(self) -> Literal["local", "minio"]:
+        if self.STORAGE_BACKEND:
+            return self.STORAGE_BACKEND
+        return "minio" if self.DEPLOY_MODE == "production" else "local"
+
+    @property
+    def task_mode(self) -> Literal["sync", "celery"]:
+        if self.TASK_MODE:
+            return self.TASK_MODE
+        return "celery" if self.DEPLOY_MODE == "production" else "sync"
+
+    @property
+    def database_url(self) -> str:
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+    @property
+    def redis_url(self) -> str:
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}"
+
+    class Config:
+        env_file = ".env"
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()
