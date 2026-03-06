@@ -6,6 +6,10 @@ def get_ocr_provider() -> OCRProvider | None:
     settings = get_settings()
     if settings.ocr_provider == "none":
         return None
+    if settings.ocr_provider == "glm":
+        from app.processors.ocr.glm_ocr import GLMOCRProvider
+
+        return GLMOCRProvider()
     if settings.ocr_provider == "paddle":
         from app.processors.ocr.paddle_ocr import PaddleOCRProvider
 

@@ -7,7 +7,9 @@ from app.schemas import DocumentResponse
 from app.tasks import get_task_executor
 from app.services.storage import get_storage
 from app.services.vector import get_vector_store
+from app.config import get_settings
 import hashlib
+import uuid
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -18,25 +20,32 @@ async def upload_document(
     db: AsyncSession = Depends(get_db)
 ):
     """上传文档"""
+    settings = get_settings()
     if not file.filename.endswith('.pdf'):
         raise HTTPException(400, "Only PDF files are supported")
 
     content = await file.read()
-    file_hash = hashlib.sha256(content).hexdigest()
+    raw_file_hash = hashlib.sha256(content).hexdigest()
+    file_hash = raw_file_hash
 
-    # 检查重复
-    existing = await db.execute(
-        select(Document).where(Document.file_hash == file_hash)
-    )
-    if existing.scalar_one_or_none():
-        raise HTTPException(409, "Document already exists")
+    if settings.FILE_HASH_DEDUP:
+        existing = await db.execute(
+            select(Document).where(Document.file_hash == file_hash)
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(409, "Document already exists")
+    else:
+        file_hash = hashlib.sha256(
+            f"{raw_file_hash}:{uuid.uuid4().hex}".encode("utf-8")
+        ).hexdigest()
 
     doc = Document(
         filename=file_hash + ".pdf",
         original_filename=file.filename,
         file_size=len(content),
         file_hash=file_hash,
-        status="pending"
+        status="pending",
+        doc_metadata={"source_file_hash": raw_file_hash}
     )
     db.add(doc)
     await db.commit()

@@ -1,15 +1,18 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal, Optional
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     # App
     APP_NAME: str = "Document Similarity System"
     DEBUG: bool = False
-    DEPLOY_MODE: Literal["demo", "production"] = "demo"
+    DEPLOY_MODE: Literal["demo", "production", "standalone"] = "demo"
 
     # Database
+    DB_BACKEND: Literal["postgres", "sqlite"] = "postgres"
+    SQLITE_PATH: str = "./data/docsim.db"
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "docsim"
@@ -32,6 +35,7 @@ class Settings(BaseSettings):
     LOCAL_STORAGE_PATH: str = "./data/files"
     FAISS_INDEX_PATH: str = "./data/faiss/index.bin"
     FAISS_META_PATH: str = "./data/faiss/meta.json"
+    CONFIG_FILE_PATH: str = "./data/config.json"
 
     # Embedding
     EMBEDDING_PROVIDER: Literal["bge", "openai", "zhipu"] = "bge"
@@ -39,17 +43,21 @@ class Settings(BaseSettings):
     EMBEDDING_DIM: int = 1024
     OPENAI_API_KEY: str = ""
     ZHIPU_API_KEY: str = ""
+    GLM_API_KEY: str = "1a09fa8a73c14d0989e7bf0d5fc37d18.biFY8H2nhMiWkgwn"
+    GLM_OCR_ENDPOINT: str = "https://open.bigmodel.cn/api/paas/v4/layout_parsing"
+    GLM_OCR_MODEL: str = "glm-ocr"
 
     # Search
     DEFAULT_THRESHOLD: float = 0.8
     DEFAULT_TOP_K: int = 10
-    OCR_PROVIDER: Optional[Literal["rapid", "paddle", "none"]] = None
+    FILE_HASH_DEDUP: bool = True
+    OCR_PROVIDER: Optional[Literal["rapid", "paddle", "glm", "none"]] = None
     VECTOR_STORE: Optional[Literal["faiss", "milvus"]] = None
     STORAGE_BACKEND: Optional[Literal["local", "minio"]] = None
     TASK_MODE: Optional[Literal["sync", "celery"]] = None
 
     @property
-    def ocr_provider(self) -> Literal["rapid", "paddle", "none"]:
+    def ocr_provider(self) -> Literal["rapid", "paddle", "glm", "none"]:
         if self.OCR_PROVIDER:
             return self.OCR_PROVIDER
         return "rapid"
@@ -73,15 +81,26 @@ class Settings(BaseSettings):
         return "celery" if self.DEPLOY_MODE == "production" else "sync"
 
     @property
+    def db_backend(self) -> Literal["postgres", "sqlite"]:
+        if self.DEPLOY_MODE == "standalone" or self.DB_BACKEND == "sqlite":
+            return "sqlite"
+        return "postgres"
+
+    @property
     def database_url(self) -> str:
+        if self.db_backend == "sqlite":
+            return f"sqlite+aiosqlite:///{self.SQLITE_PATH}"
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+    @property
+    def sync_database_url(self) -> str:
+        if self.db_backend == "sqlite":
+            return f"sqlite:///{self.SQLITE_PATH}"
+        return f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     @property
     def redis_url(self) -> str:
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}"
-
-    class Config:
-        env_file = ".env"
 
 
 @lru_cache()

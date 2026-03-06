@@ -28,8 +28,7 @@ class Document(Base):
     text_content = Column(Text, nullable=True)
     page_count = Column(Integer, default=0)
 
-    # Metadata
-    metadata = Column(JSON, default=dict)
+    doc_metadata = Column("metadata", JSON, default=dict)
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)

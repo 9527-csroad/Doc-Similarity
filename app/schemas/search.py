@@ -13,6 +13,7 @@ class SimilarDocument(BaseModel):
     id: str
     filename: str
     score: float
+    match_level: str
     snippet: Optional[str] = None
 
 
@@ -20,4 +21,7 @@ class SearchResponse(BaseModel):
     query_id: str
     results: List[SimilarDocument]
     total: int
+    same_count: int
+    likely_same_count: int
+    similar_count: int
     threshold_used: float

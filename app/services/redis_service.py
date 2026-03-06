@@ -1,27 +1,36 @@
 import redis
-from typing import Optional
 from app.config import get_settings
+from app.services.config_service import get_threshold as file_get_threshold, set_threshold as file_set_threshold
 
 THRESHOLD_KEY = "config:threshold"
 
 
 class RedisService:
-    """Redis 缓存服务"""
-
     def __init__(self):
-        settings = get_settings()
-        self.client = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            decode_responses=True
-        )
-        self.default_threshold = settings.DEFAULT_THRESHOLD
+        self.settings = get_settings()
+        self._client: redis.Redis | None = None
+
+    @property
+    def client(self) -> redis.Redis | None:
+        if self._client is None and self.settings.DEPLOY_MODE != "standalone":
+            try:
+                self._client = redis.Redis(
+                    host=self.settings.REDIS_HOST,
+                    port=self.settings.REDIS_PORT,
+                    decode_responses=True
+                )
+            except Exception:
+                pass
+        return self._client
 
     def get_threshold(self) -> float:
-        """获取全局阈值"""
+        if self.settings.DEPLOY_MODE == "standalone" or self.client is None:
+            return file_get_threshold()
         val = self.client.get(THRESHOLD_KEY)
-        return float(val) if val else self.default_threshold
+        return float(val) if val else self.settings.DEFAULT_THRESHOLD
 
-    def set_threshold(self, value: float):
-        """设置全局阈值"""
-        self.client.set(THRESHOLD_KEY, str(value))
+    def set_threshold(self, value: float) -> None:
+        if self.settings.DEPLOY_MODE == "standalone" or self.client is None:
+            file_set_threshold(value)
+        else:
+            self.client.set(THRESHOLD_KEY, str(value))

@@ -24,6 +24,12 @@ htmlcov/
 # Logs
 *.log
 
-# Demo data
+# Data
 data/files/
 data/faiss/
+data/*.db
+data/test_dataset1/
+data/test_dataset2/
+
+# Models (large files)
+models/
