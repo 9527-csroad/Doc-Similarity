@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 
 class VectorStore(ABC):
@@ -14,3 +14,6 @@ class VectorStore(ABC):
     @abstractmethod
     def delete(self, doc_id: str) -> None:
         pass
+
+    def get_vector(self, doc_id: str) -> Optional[List[float]]:
+        return None

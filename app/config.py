@@ -33,8 +33,14 @@ class Settings(BaseSettings):
     MINIO_SECRET_KEY: str = "minioadmin123"
     MINIO_BUCKET: str = "documents"
     LOCAL_STORAGE_PATH: str = "./data/files"
+    TEXTS_BASE_PATH: str = "./data/texts"
+    CHARS_PER_PSEUDO_PAGE: int = 2000
     FAISS_INDEX_PATH: str = "./data/faiss/index.bin"
     FAISS_META_PATH: str = "./data/faiss/meta.json"
+    FAISS_FINGERPRINT_MERGED_PATH: str = "./data/faiss/fingerprint_merged.bin"
+    FAISS_FINGERPRINT_MERGED_META: str = "./data/faiss/fingerprint_merged_meta.json"
+    FAISS_FINGERPRINT_POOLED_PATH: str = "./data/faiss/fingerprint_pooled.bin"
+    FAISS_FINGERPRINT_POOLED_META: str = "./data/faiss/fingerprint_pooled_meta.json"
     CONFIG_FILE_PATH: str = "./data/config.json"
 
     # Embedding

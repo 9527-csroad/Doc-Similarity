@@ -1,9 +1,11 @@
-from app.schemas.document import DocumentBase, DocumentCreate, DocumentResponse
-from app.schemas.search import SearchRequest, SearchResponse, SimilarDocument
-from app.schemas.config import ThresholdConfig, ThresholdResponse
+from app.schemas.book import (
+    BookUploadRequest, BookUploadResponse,
+    BookSearchRequest, BookSearchResponse, BookSearchItem,
+    HotlistRequest, HotlistResponse, HotlistBookItem,
+)
 
 __all__ = [
-    "DocumentBase", "DocumentCreate", "DocumentResponse",
-    "SearchRequest", "SearchResponse", "SimilarDocument",
-    "ThresholdConfig", "ThresholdResponse",
+    "BookUploadRequest", "BookUploadResponse",
+    "BookSearchRequest", "BookSearchResponse", "BookSearchItem",
+    "HotlistRequest", "HotlistResponse", "HotlistBookItem",
 ]

@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import faiss
 import numpy as np
@@ -10,11 +10,15 @@ from app.services.vector.base import VectorStore
 
 
 class FaissStore(VectorStore):
-    def __init__(self):
+    def __init__(
+        self,
+        index_path: Optional[str] = None,
+        meta_path: Optional[str] = None,
+    ):
         settings = get_settings()
         self.dim = settings.EMBEDDING_DIM
-        self.index_path = Path(settings.FAISS_INDEX_PATH)
-        self.meta_path = Path(settings.FAISS_META_PATH)
+        self.index_path = Path(index_path or settings.FAISS_INDEX_PATH)
+        self.meta_path = Path(meta_path or settings.FAISS_META_PATH)
         self.index_path.parent.mkdir(parents=True, exist_ok=True)
         self.doc_ids: List[str] = []
         self.index = faiss.IndexFlatIP(self.dim)
@@ -55,6 +59,13 @@ class FaissStore(VectorStore):
                 continue
             results.append((self.doc_ids[idx], float(score)))
         return results
+
+    def get_vector(self, doc_id: str) -> Optional[List[float]]:
+        if doc_id not in self.doc_ids:
+            return None
+        idx = self.doc_ids.index(doc_id)
+        vec = self.index.reconstruct(idx)
+        return vec.tolist()
 
     def delete(self, doc_id: str) -> None:
         if doc_id not in self.doc_ids:
