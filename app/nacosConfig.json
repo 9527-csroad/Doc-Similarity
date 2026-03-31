@@ -1,0 +1,14 @@
+{
+    "server_addresses": "192.168.8.69:8848",
+    "namespace": "dm-platform", 
+    "group_name": "ai-platform", 
+    "username": "dm-ai-engine", 
+    "password": "sldjdf@uio236789",
+    "ai_server_name": "jszx-doc-similarity-api", 
+    "ai_server_port": 510, 
+    "ai_server_ip": "192.168.11.124", 
+    "metadata": {
+      "clusterLabel": ["global_defalut"], 
+      "loadStrategy": "random" 
+    }
+  }

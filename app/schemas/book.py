@@ -12,13 +12,13 @@ class BookUploadRequest(BaseModel):
 
 
 class BookUploadResponse(BaseModel):
-    status: str
+    message: str
+    time: float
     book_id: Optional[str] = None
     pdf_id: str
     is_duplicate: bool = False
     match_reason: Optional[str] = None
     upload_count: int = 1
-    message: Optional[str] = None
 
 
 class BookSearchRequest(BaseModel):
@@ -39,6 +39,8 @@ class BookSearchItem(BaseModel):
 
 
 class BookSearchResponse(BaseModel):
+    message: str
+    time: float
     query_pdf_id: str
     threshold: float
     total: int
@@ -64,6 +66,8 @@ class HotlistBookItem(BaseModel):
 
 
 class HotlistResponse(BaseModel):
+    message: str
+    time: float
     start_date: datetime
     end_date: datetime
     threshold: float

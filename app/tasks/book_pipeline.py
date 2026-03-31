@@ -33,7 +33,7 @@ def process_book_pipeline(
     session = Session()
     try:
         if session.query(BookUpload).filter(BookUpload.pdf_id == pdf_id).first():
-            return {"status": "error", "message": f"pdf_id {pdf_id} already exists"}
+            return {"message": f"pdf_id {pdf_id} already exists"}
 
         pdf_bytes = _download(pdf_url)
         content_hash = hashlib.sha256(pdf_bytes).hexdigest()
@@ -57,7 +57,6 @@ def process_book_pipeline(
             session.add(upload)
             session.commit()
             return {
-                "status": "success",
                 "book_id": existing_book.id,
                 "is_duplicate": True,
                 "match_reason": match_reason,
@@ -117,7 +116,6 @@ def process_book_pipeline(
         session.add(upload)
         session.commit()
         return {
-            "status": "success",
             "book_id": book.id,
             "is_duplicate": False,
             "match_reason": None,

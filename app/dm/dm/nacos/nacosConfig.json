@@ -1,0 +1,14 @@
+{
+    "server_addresses": "192.168.10.2:8848", 
+    "namespace": "dm-platform", 
+    "group_name": "ai-platform", 
+    "username": "nacos", 
+    "password": "ddmh@2023", 
+    "ai_server_name": "dm-ai-hjhb-python-api", 
+    "ai_server_port": 8001, 
+    "ai_server_ip": "192.168.111.9",
+    "metadata": {
+      "clusterLabel": ["global_defalut", "global_vip", "vest_defalut:vest_id", "vest_vip:vest_id"],
+      "loadStrategy": "random" 
+    }
+  }

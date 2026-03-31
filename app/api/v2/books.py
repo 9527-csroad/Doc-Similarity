@@ -1,4 +1,4 @@
-from datetime import datetime
+import time
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -20,6 +20,7 @@ router = APIRouter(prefix="/books", tags=["books-v2"])
 
 @router.post("/upload", response_model=BookUploadResponse)
 async def upload_book(request: BookUploadRequest):
+    t0 = time.perf_counter()
     try:
         result = process_book_pipeline(
             pdf_id=request.pdf_id,
@@ -27,9 +28,17 @@ async def upload_book(request: BookUploadRequest):
             txt_url=request.txt_url,
             fingerprint_mode=request.fingerprint_mode,
         )
+        book_id = result.get("book_id")
+        msg = (
+            "success"
+            if book_id
+            else (result.get("message") or "error")
+        )
+        elapsed = round(time.perf_counter() - t0, 6)
         return BookUploadResponse(
-            status=result["status"],
-            book_id=result.get("book_id"),
+            message=msg,
+            time=elapsed,
+            book_id=book_id,
             pdf_id=request.pdf_id,
             is_duplicate=result.get("is_duplicate", False),
             match_reason=result.get("match_reason"),
@@ -44,6 +53,7 @@ async def search_similar_books(
     request: BookSearchRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    t0 = time.perf_counter()
     upload_result = await db.execute(
         select(BookUpload).where(BookUpload.pdf_id == request.pdf_id)
     )
@@ -92,7 +102,10 @@ async def search_similar_books(
             ))
 
     results.sort(key=lambda x: (-x.similarity, x.upload_date))
+    elapsed = round(time.perf_counter() - t0, 6)
     return BookSearchResponse(
+        message="success",
+        time=elapsed,
         query_pdf_id=request.pdf_id,
         threshold=request.threshold,
         total=len(results),
@@ -105,6 +118,7 @@ async def hot_books(
     request: HotlistRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    t0 = time.perf_counter()
     uploads_result = await db.execute(
         select(BookUpload).where(
             and_(
@@ -115,7 +129,10 @@ async def hot_books(
     )
     uploads = uploads_result.scalars().all()
     if not uploads:
+        elapsed = round(time.perf_counter() - t0, 6)
         return HotlistResponse(
+            message="success",
+            time=elapsed,
             start_date=request.start_date,
             end_date=request.end_date,
             threshold=request.threshold,
@@ -179,7 +196,10 @@ async def hot_books(
     results.sort(key=lambda x: -x.upload_count)
     results = results[: request.top_n]
 
+    elapsed = round(time.perf_counter() - t0, 6)
     return HotlistResponse(
+        message="success",
+        time=elapsed,
         start_date=request.start_date,
         end_date=request.end_date,
         threshold=request.threshold,
