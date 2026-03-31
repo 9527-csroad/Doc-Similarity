@@ -29,6 +29,7 @@ class BookSearchRequest(BaseModel):
 
 class BookSearchItem(BaseModel):
     pdf_id: str
+    pdf_url: Optional[str] = None
     book_id: str
     upload_date: datetime
     similarity: float
@@ -58,6 +59,7 @@ class HotlistRequest(BaseModel):
 class HotlistBookItem(BaseModel):
     book_ids: List[str]
     pdf_ids: List[str]
+    pdf_urls: List[Optional[str]]
     upload_count: int
     title: Optional[str] = None
     author: Optional[str] = None

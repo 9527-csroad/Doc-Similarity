@@ -92,6 +92,7 @@ async def search_similar_books(
         for up in uploads:
             results.append(BookSearchItem(
                 pdf_id=up.pdf_id,
+                pdf_url=up.pdf_url,
                 book_id=book_id,
                 upload_date=up.upload_date,
                 similarity=round(score_map.get(book_id, 1.0), 6),
@@ -143,13 +144,13 @@ async def hot_books(
     from collections import defaultdict
     book_uploads_map: dict = defaultdict(list)
     for up in uploads:
-        book_uploads_map[up.book_id].append(up.pdf_id)
+        book_uploads_map[up.book_id].append((up.pdf_id, up.pdf_url))
 
     unique_book_ids = list(book_uploads_map.keys())
 
     if request.threshold >= 1.0:
         groups = [
-            {"book_ids": [bid], "pdf_ids": book_uploads_map[bid]}
+            {"book_ids": [bid], "pdfs": book_uploads_map[bid]}
             for bid in unique_book_ids
         ]
     else:
@@ -167,7 +168,7 @@ async def hot_books(
                 continue
             visited.add(bid)
             group_book_ids = [bid]
-            group_pdf_ids = list(book_uploads_map[bid])
+            group_pdfs = list(book_uploads_map[bid])
             if bid in book_vectors:
                 matches = vector_store.search(book_vectors[bid], top_k=500)
                 for other_id, score in matches:
@@ -175,18 +176,21 @@ async def hot_books(
                         if other_id in book_uploads_map:
                             visited.add(other_id)
                             group_book_ids.append(other_id)
-                            group_pdf_ids.extend(book_uploads_map[other_id])
-            groups.append({"book_ids": group_book_ids, "pdf_ids": group_pdf_ids})
+                            group_pdfs.extend(book_uploads_map[other_id])
+            groups.append({"book_ids": group_book_ids, "pdfs": group_pdfs})
 
     results: List[HotlistBookItem] = []
     for group in groups:
         rep_id = group["book_ids"][0]
         book_result = await db.execute(select(Book).where(Book.id == rep_id))
         book = book_result.scalar_one_or_none()
+        pdf_ids = [pid for pid, _ in group["pdfs"]]
+        pdf_urls = [purl for _, purl in group["pdfs"]]
         results.append(HotlistBookItem(
             book_ids=group["book_ids"],
-            pdf_ids=group["pdf_ids"],
-            upload_count=len(group["pdf_ids"]),
+            pdf_ids=pdf_ids,
+            pdf_urls=pdf_urls,
+            upload_count=len(pdf_ids),
             title=book.title if book else None,
             author=book.author if book else None,
             isbn=book.isbn if book else None,
